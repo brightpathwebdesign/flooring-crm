@@ -1028,7 +1028,19 @@ async function saveNotes(id, notes) {
   }
 }
 
-async function addLead(data) {
+async function deleteLead(id) {
+  if (!DB) return;
+  try {
+    await DB.collection('leads').doc(id).delete();
+    ST.leads = ST.leads.filter(l => l.id !== id);
+    ST.current = null;
+    applyFilter();
+    toast('Lead deleted.');
+    setView('leads');
+  } catch(e) {
+    toast('⚠️ Could not delete lead.');
+  }
+}
   if (!DB) { toast('⚠️ Not connected to database'); return; }
   try {
     await DB.collection('leads').add({
@@ -1465,6 +1477,13 @@ function renderDetail() {
           Save Notes
         </button>
       </div>
+    </div>
+
+    <!-- Delete -->
+    <div style="margin-bottom:14px;">
+      <button class="btn btn-danger" onclick="if(confirm('Delete this lead? This cannot be undone.')){deleteLead('${lead.id}')}">
+        Delete Lead
+      </button>
     </div>
   `;
 }
