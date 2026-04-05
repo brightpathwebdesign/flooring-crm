@@ -1041,6 +1041,8 @@ async function deleteLead(id) {
     toast('⚠️ Could not delete lead.');
   }
 }
+
+async function addLead(data) {
   if (!DB) { toast('⚠️ Not connected to database'); return; }
   try {
     await DB.collection('leads').add({
