@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Flooring CRM</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" id="meta-theme" content="#1C0F08">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Floor CRM">
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <!-- Google Fonts: Outfit — clean, geometric, modern -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Firebase SDK (compat mode — works in plain HTML with no build tools) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════════
+       BASE RESET & ROOT VARS
+    ═══════════════════════════════════════════════ */
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      /* Static colors */
+      --page-bg: #F4F5F7;
+      --card:    #FFFFFF;
+      --border:  #E4E6EA;
+      --text:    #111318;
+      --text2:   #6B7280;
+      --green:        #166534;
+      --green-bg:     #F0FDF4;
+      --blue:         #1D4ED8;
+      --blue-bg:      #EFF6FF;
+      --red:          #B91C1C;
+      --red-bg:       #FEF2F2;
+      --radius:  12px;
+      --shadow:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+
+      /* Company-dynamic theme vars (updated by JS) */
+      --co-bg:     #1C0F08;
+      --co-accent: #C17B3C;
+      --co-light:  #FDF6EE;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background: var(--page-bg);
+      color: var(--text);
+      max-width: 500px;
+      margin: 0 auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ═══════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════ */
+    .header {
+      background: var(--co-bg);
+      padding: 12px 16px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: background 0.3s ease;
+    }
+
+    .header-row1 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .app-wordmark {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* Company Toggle */
+    .co-toggle {
+      display: flex;
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .co-btn {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.4);
+      font-family: 'Outfit', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      padding: 7px 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .co-btn.active {
+      background: var(--co-accent);
+      color: #fff;
+    }
+
+    .header-company {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .header-co-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.1;
+      letter-spacing: -0.3px;
+    }
+
+    .header-co-city {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      font-weight: 400;
+      letter-spacing: 0.2px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       BOTTOM NAV
+    ═══════════════════════════════════════════════ */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 500px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .nav-tab {
+      flex: 1;
+      background: none;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 10px 0 8px;
+      cursor: pointer;
+      color: var(--text2);
+      transition: color 0.2s;
+      position: relative;
+    }
+
+    .nav-tab.active { color: var(--co-accent); }
+
+    .nav-tab svg {
+      width: 24px; height: 24px;
+      stroke: currentColor; fill: none; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .nav-tab span {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+
+    .nav-badge {
+      position: absolute;
+      top: 6px;
+      right: calc(50% - 18px);
+      background: var(--red);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+    }
+
+    /* ═══════════════════════════════════════════════
+       MAIN CONTENT AREA
+    ═══════════════════════════════════════════════ */
+    .main {
+      padding: 16px 16px calc(80px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* ═══════════════════════════════════════════════
+       ALERT BANNER
+    ═══════════════════════════════════════════════ */
+    .new-leads-banner {
+      background: var(--co-bg);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-left: 4px solid var(--co-accent);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-md);
+      transition: opacity 0.15s;
+    }
+    .new-leads-banner:active { opacity: 0.85; }
+
+    .banner-count {
+      font-size: 52px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -2px;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .banner-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.7);
+      margin-top: 4px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+
+    .banner-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      margin-top: 2px;
+      font-weight: 400;
+    }
+
+    .banner-arrow {
+      font-size: 20px;
+      color: rgba(255,255,255,0.3);
+      font-weight: 300;
+    }
+
+    /* ═══════════════════════════════════════════════
+       STATS ROW
+    ═══════════════════════════════════════════════ */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .stat-num {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--co-accent);
+      line-height: 1;
+      letter-spacing: -1px;
+      font-family: 'Outfit', sans-serif;
+      transition: color 0.3s;
+    }
+
+    .stat-num.red { color: var(--red); }
+
+    .stat-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text2);
+      margin-top: 5px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       SECTION HEADER
+    ═══════════════════════════════════════════════ */
+    .sec-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .sec-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text2);
+    }
+
+    .sec-link {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--co-accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      transition: color 0.3s;
+    }
+
+    /* ═══════════════════════════════════════════════
+       LEAD CARDS
+    ═══════════════════════════════════════════════ */
+    .lead-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: transform 0.12s, box-shadow 0.12s;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .lead-card:active {
+      transform: scale(0.975);
+      box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+    }
+
+    .lc-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .lc-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      letter-spacing: -0.2px;
+    }
+
+    .lc-phone {
+      font-size: 14px;
+      color: var(--blue);
+      font-weight: 500;
+    }
+
+    .lc-bottom {
+      font-size: 13px;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .lc-dot {
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    /* Status Pills */
+    .pill {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .pill-new       { background: var(--red-bg);   color: var(--red); }
+    .pill-contacted { background: var(--blue-bg);  color: var(--blue); }
+    .pill-closed    { background: var(--green-bg); color: var(--green); }
+
+    /* ═══════════════════════════════════════════════
+       FILTER PILLS ROW
+    ═══════════════════════════════════════════════ */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      padding-bottom: 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .filter-row::-webkit-scrollbar { display: none; }
+
+    .fpill {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      color: var(--text2);
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 7px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .fpill.active {
+      background: var(--co-accent);
+      border-color: var(--co-accent);
+      color: #fff;
+    }
+
+    /* ═══════════════════════════════════════════════
+       DETAIL VIEW
+    ═══════════════════════════════════════════════ */
+    .back-btn {
+      background: none;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text2);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 16px;
+      padding: 0;
+      transition: color 0.3s;
+    }
+
+    .detail-name {
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 10px;
+      letter-spacing: -0.4px;
+    }
+
+    .detail-status-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      letter-spacing: 0.1px;
+    }
+    .dsb-new       { background: var(--red-bg);   color: var(--red); }
+    .dsb-contacted { background: var(--blue-bg);  color: var(--blue); }
+    .dsb-closed    { background: var(--green-bg); color: var(--green); }
+
+    .detail-block {
+      background: var(--card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+
+    .db-head {
+      background: var(--page-bg);
+      padding: 8px 16px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--text2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .db-row {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .db-row:last-child { border-bottom: none; }
+
+    .db-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text2);
+      margin-bottom: 3px;
+    }
+
+    .db-value {
+      font-size: 16px;
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    .db-link { color: var(--blue); text-decoration: none; font-weight: 700; }
+
+    /* ═══════════════════════════════════════════════
+       BUTTONS
+    ═══════════════════════════════════════════════ */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 15px;
+      border-radius: var(--radius);
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.12s, opacity 0.12s;
+      letter-spacing: 0.1px;
+    }
+    .btn:active { opacity: 0.85; transform: scale(0.98); }
+
+    .btn-primary {
+      background: var(--co-accent);
+      color: #fff;
+      transition: background 0.3s, opacity 0.12s, transform 0.12s;
+    }
+
+    .btn-success {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .btn-ghost {
+      background: var(--card);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    .btn-danger {
+      background: var(--red-bg);
+      color: var(--red);
+      border: 1.5px solid #FECACA;
+    }
+
+    .btn + .btn { margin-top: 10px; }
+
+    /* ═══════════════════════════════════════════════
+       INPUTS
+    ═══════════════════════════════════════════════ */
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="tel"],
+    textarea, select {
+      width: 100%;
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 400;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    textarea { resize: vertical; }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--co-accent);
+    }
+
+    .form-group { margin-bottom: 14px; }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text2);
+      margin-bottom: 6px;
+    }
+
+    /* ═══════════════════════════════════════════════
+       BOTTOM SHEET
+    ═══════════════════════════════════════════════ */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 22px 22px 0 0;
+      padding: 20px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+      transform: translateY(100%);
+      transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .overlay.open .sheet { transform: translateY(0); }
+
+    .sheet-handle {
+      width: 40px; height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    .sheet-title {
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 18px;
+      letter-spacing: -0.2px;
+    }
+
+    .resp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .resp-opt {
+      background: var(--page-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .resp-opt:active { transform: scale(0.95); }
+    .resp-opt.selected {
+      border-color: var(--co-accent);
+      background: var(--co-light);
+    }
+    .resp-icon { font-size: 26px; margin-bottom: 5px; }
+    .resp-label { font-size: 13px; font-weight: 600; color: var(--text); }
+
+    /* ═══════════════════════════════════════════════
+       SETUP / FIRST RUN
+    ═══════════════════════════════════════════════ */
+    .setup-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+      background: var(--page-bg);
+    }
+
+    .setup-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 32px;
+    }
+
+    .setup-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 420px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .setup-h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.3px; }
+    .setup-p  { font-size: 14px; color: var(--text2); margin-bottom: 22px; line-height: 1.5; font-weight: 400; }
+
+    .setup-lbl {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text2);
+      margin-bottom: 6px;
+      margin-top: 14px;
+      display: block;
+    }
+    .setup-lbl:first-of-type { margin-top: 0; }
+
+    /* ═══════════════════════════════════════════════
+       EMPTY & LOADING STATES
+    ═══════════════════════════════════════════════ */
+    .empty {
+      text-align: center;
+      padding: 56px 20px;
+      color: var(--text2);
+    }
+    .empty-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty-sub   { font-size: 14px; font-weight: 400; }
+
+    .loading-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 0;
+    }
+
+    .spinner {
+      width: 40px; height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--co-accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      transition: border-top-color 0.3s;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════════════════════════════════════
+       TOAST
+    ═══════════════════════════════════════════════ */
+    .toast {
+      position: fixed;
+      bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: #1A1108;
+      color: #fff;
+      padding: 13px 22px;
+      border-radius: 50px;
+      font-size: 14px;
+      font-weight: 700;
+      z-index: 300;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+      transition: opacity 0.25s, transform 0.25s;
+      max-width: 90vw;
+      text-align: center;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ═══════════════════════════════════════════════
+       ALL CAUGHT UP CARD
+    ═══════════════════════════════════════════════ */
+    .all-good {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--green);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+    .all-good-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .all-good-sub   { font-size: 13px; color: var(--text2); font-weight: 400; }
+
+    /* ═══════════════════════════════════════════════
+       SETTINGS PAGE
+    ═══════════════════════════════════════════════ */
+    .settings-section { margin-bottom: 20px; }
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-main  { font-size: 16px; font-weight: 600; }
+    .settings-row-sub   { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════
+       REALTIME PULSE
+    ═══════════════════════════════════════════════ */
+    .live-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #27AE60;
+      margin-left: 6px;
+      animation: pulse 2s infinite;
+      vertical-align: middle;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       DIVIDER
+    ═══════════════════════════════════════════════ */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- Bottom sheet overlay -->
+<div class="overlay" id="overlay" onclick="maybeCloseSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<!-- App root -->
+<div id="app"></div>
+
+<script>
+'use strict';
+
+/* ================================================================
+   COMPANY CONFIGURATION
+================================================================ */
+const COMPANIES = {
+  legacy: {
+    id:        'legacy',
+    name:      'Legacy Hardwoods',
+    short:     'Legacy',
+    code:      'LEGACY',
+    city:      'Holland, MI',
+    bg:        '#1C0F08',
+    accent:    '#C17B3C',
+    light:     '#FDF6EE',
+    theme:     '#1C0F08',
+  },
+  grhfr: {
+    id:        'grhfr',
+    name:      'GR Hardwood Refinishing',
+    short:     'GRHFR',
+    code:      'GRHFR',
+    city:      'Grand Rapids, MI',
+    bg:        '#0A1929',
+    accent:    '#2878CC',
+    light:     '#EEF4FF',
+    theme:     '#0A1929',
+  }
+};
+
+/* ================================================================
+   APP STATE
+================================================================ */
+let DB = null;
+let _snapshotUnsub = null;   // Firebase real-time unsubscribe handle
+let _snapshotReady = false;  // True after first snapshot fires (prevents new-lead toasts on initial load)
+
+const ST = {
+  view:      'dashboard',
+  company:   localStorage.getItem('crm_co') || 'legacy',
+  leads:     [],
+  filtered:  [],
+  current:   null,
+  filter:    'all',
+  loading:   false,
+  connected: false,
+  configured: !!localStorage.getItem('fb_config'),
+};
+
+/* ================================================================
+   FIREBASE INIT
+================================================================ */
+function initDB() {
+  const configStr = localStorage.getItem('fb_config');
+  if (!configStr) return false;
+  try {
+    const config = JSON.parse(configStr);
+    // Firebase throws if you call initializeApp twice — reuse existing app
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    DB = firebase.firestore();
+    return true;
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    return false;
+  }
+}
+
+/* ================================================================
+   FIREBASE REAL-TIME  (handles initial load + live updates together)
+   onSnapshot fires once with ALL current docs, then again for each change.
+   _snapshotReady flag prevents "New lead!" toast on the initial load.
+================================================================ */
+function subscribeToLeads() {
+  if (!DB) return;
+
+  // Cancel any previous listener
+  if (_snapshotUnsub) { _snapshotUnsub(); _snapshotUnsub = null; }
+
+  _snapshotReady = false;
+  ST.loading = true;
+  render();
+
+  _snapshotUnsub = DB
+    .collection('leads')
+    .where('company', '==', ST.company)
+    .orderBy('created_at', 'desc')
+    .onSnapshot(
+      (snapshot) => {
+        if (!_snapshotReady) {
+          // ── First fire = initial data load ──
+          ST.leads = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          _snapshotReady = true;
+          ST.connected  = true;
+          ST.loading    = false;
+          applyFilter();
+          render();
+        } else {
+          // ── Subsequent fires = real-time changes ──
+          snapshot.docChanges().forEach((change) => {
+            const lead = { id: change.doc.id, ...change.doc.data() };
+            if (change.type === 'added') {
+              ST.leads.unshift(lead);
+              toast(`🔔 New lead: ${lead.name || 'Unknown'}!`);
+              if (navigator.vibrate) navigator.vibrate([200, 80, 200]);
+            } else if (change.type === 'modified') {
+              const idx = ST.leads.findIndex(l => l.id === lead.id);
+              if (idx !== -1) ST.leads[idx] = lead;
+              if (ST.current?.id === lead.id) ST.current = lead;
+            } else if (change.type === 'removed') {
+              ST.leads = ST.leads.filter(l => l.id !== change.doc.id);
+            }
+          });
+          applyFilter();
+          render();
+        }
+      },
+      (err) => {
+        console.error('Firestore error:', err);
+        ST.loading    = false;
+        ST.connected  = false;
+        toast('⚠️ Database error. Check Settings.');
+        render();
+      }
+    );
+}
+
+/* ================================================================
+   DATA FUNCTIONS  (all use Firestore now)
+================================================================ */
+
+// fetchLeads just re-subscribes (onSnapshot handles loading + live updates)
+function fetchLeads() { subscribeToLeads(); }
+
+function applyFilter() {
+  if (ST.filter === 'all') {
+    ST.filtered = [...ST.leads];
+  } else {
+    ST.filtered = ST.leads.filter(l => l.status === ST.filter);
+  }
+}
+
+async function updateStatus(id, status, method = '') {
+  if (!DB) { toast('⚠️ Not connected to database'); return; }
+  try {
+    await DB.collection('leads').doc(id).update({
+      status,
+      response_method: method,
+      updated_at: now(),
+    });
+    const lead = ST.leads.find(l => l.id === id);
+    if (lead) { lead.status = status; lead.response_method = method; }
+    if (ST.current?.id === id) { ST.current.status = status; ST.current.response_method = method; }
+    applyFilter();
+    toast('✅ Lead updated!');
+    render();
+  } catch(e) {
+    toast('⚠️ Could not save. Try again.');
+  }
+}
+
+async function saveNotes(id, notes) {
+  if (!DB) return;
+  try {
+    await DB.collection('leads').doc(id).update({ notes, updated_at: now() });
+    const lead = ST.leads.find(l => l.id === id);
+    if (lead) lead.notes = notes;
+    if (ST.current?.id === id) ST.current.notes = notes;
+    toast('📝 Notes saved!');
+  } catch(e) {
+    toast('⚠️ Could not save notes.');
+  }
+}
+
+async function addLead(data) {
+  if (!DB) { toast('⚠️ Not connected to database'); return; }
+  try {
+    await DB.collection('leads').add({
+      ...data,
+      company:    ST.company,
+      status:     'new',
+      created_at: now(),
+      updated_at: now(),
+    });
+    toast('✅ Lead added!');
+    setView('leads');
+  } catch(e) {
+    toast('⚠️ Could not add lead. ' + (e.message || ''));
+  }
+}
+
+/* ================================================================
+   THEME
+================================================================ */
+function applyTheme(co) {
+  const c = COMPANIES[co];
+  const root = document.documentElement.style;
+  root.setProperty('--co-bg',     c.bg);
+  root.setProperty('--co-accent', c.accent);
+  root.setProperty('--co-light',  c.light);
+  const meta = document.getElementById('meta-theme');
+  if (meta) meta.content = c.theme;
+}
+
+/* ================================================================
+   UTILITY
+================================================================ */
+function now() { return new Date().toISOString(); }
+
+function timeAgo(str) {
+  const d    = new Date(str);
+  const diff = Date.now() - d;
+  const min  = Math.floor(diff / 60000);
+  const hr   = Math.floor(min / 60);
+  const day  = Math.floor(hr / 24);
+  if (min < 2)  return 'Just now';
+  if (min < 60) return `${min}m ago`;
+  if (hr  < 24) return `${hr}h ago`;
+  if (day  < 2) return 'Yesterday';
+  if (day  < 7) return `${day} days ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function fmtDate(str) {
+  return new Date(str).toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+    year: 'numeric', hour: 'numeric', minute: '2-digit'
+  });
+}
+
+function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+let _toastQ = [];
+
+/* ================================================================
+   STATE HELPERS
+================================================================ */
+function setView(v) { ST.view = v; render(); }
+
+function switchCompany(co) {
+  ST.company = co;
+  localStorage.setItem('crm_co', co);
+  ST.leads = [];
+  ST.filtered = [];
+  ST.filter = 'all';
+  ST.view = 'dashboard';
+  applyTheme(co);
+  subscribeToLeads();
+  render();
+  fetchLeads();
+}
+
+function setFilter(f) {
+  ST.filter = f;
+  applyFilter();
+  render();
+}
+
+function openLead(id) {
+  ST.current = ST.leads.find(l => l.id === id) || null;
+  ST.view = 'detail';
+  render();
+}
+
+/* ================================================================
+   BOTTOM SHEET
+================================================================ */
+function openSheet(html) {
+  document.getElementById('sheet-body').innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function maybeCloseSheet(e) {
+  if (e.target === document.getElementById('overlay')) closeSheet();
+}
+
+function openResponseSheet(leadId) {
+  window._responseLeadId = leadId;
+  window._responseMethod = '';
+
+  const methods = [
+    { id: 'call',      icon: '📞', label: 'Phone Call'   },
+    { id: 'text',      icon: '💬', label: 'Text Message' },
+    { id: 'email',     icon: '📧', label: 'Email'        },
+    { id: 'voicemail', icon: '📱', label: 'Left Voicemail' },
+  ];
+
+  openSheet(`
+    <div class="sheet-title">How did you reach out?</div>
+    <div class="resp-grid">
+      ${methods.map(m => `
+        <div class="resp-opt" id="ro-${m.id}" onclick="pickResponse('${m.id}')">
+          <div class="resp-icon">${m.icon}</div>
+          <div class="resp-label">${m.label}</div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn btn-primary" id="resp-confirm-btn" onclick="confirmResponse()" disabled style="opacity:.4">
+      Mark as Contacted
+    </button>
+    <button class="btn btn-ghost" style="margin-top:10px;" onclick="closeSheet()">Cancel</button>
+  `);
+}
+
+function pickResponse(method) {
+  window._responseMethod = method;
+  document.querySelectorAll('.resp-opt').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('ro-' + method);
+  if (el) el.classList.add('selected');
+  const btn = document.getElementById('resp-confirm-btn');
+  if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+}
+
+function confirmResponse() {
+  const id     = window._responseLeadId;
+  const method = window._responseMethod;
+  if (!id || !method) return;
+  closeSheet();
+  updateStatus(id, 'contacted', method);
+}
+
+/* ================================================================
+   RENDER ENGINE
+================================================================ */
+function render() {
+  const app = document.getElementById('app');
+  if (!app) return;
+  applyTheme(ST.company);
+
+  if (!ST.configured) {
+    app.innerHTML = renderSetup();
+    return;
+  }
+
+  const activeTab = ['detail', 'add'].includes(ST.view) ? 'leads' : ST.view;
+  const newCount  = ST.leads.filter(l => l.status === 'new').length;
+
+  app.innerHTML = `
+    ${renderHeader()}
+    <main class="main">${ST.loading ? renderLoading() : renderView()}</main>
+    ${renderNav(activeTab, newCount)}
+  `;
+}
+
+/* ── Header ── */
+function renderHeader() {
+  const co = COMPANIES[ST.company];
+  return `
+    <header class="header">
+      <div class="header-row1">
+        <div class="app-wordmark">CRM${ST.connected ? '<span class="live-dot" title="Live"></span>' : ''}</div>
+        <div class="co-toggle">
+          <button class="co-btn ${ST.company === 'legacy' ? 'active' : ''}" onclick="switchCompany('legacy')">LEGACY</button>
+          <button class="co-btn ${ST.company === 'grhfr'  ? 'active' : ''}" onclick="switchCompany('grhfr')">GRHFR</button>
+        </div>
+      </div>
+      <div class="header-company">
+        <div class="header-co-name">${co.name}</div>
+        <div class="header-co-city">${co.city}</div>
+      </div>
+    </header>
+  `;
+}
+
+/* ── Bottom Nav ── */
+function renderNav(active, newCount) {
+  const tabs = [
+    { id: 'dashboard', label: 'Home',     icon: svgHome()     },
+    { id: 'leads',     label: 'Leads',    icon: svgLeads(),    badge: newCount },
+    { id: 'settings',  label: 'Settings', icon: svgSettings() },
+  ];
+
+  return `
+    <nav class="bottom-nav">
+      ${tabs.map(t => `
+        <button class="nav-tab ${active === t.id ? 'active' : ''}"
+          onclick="${t.id === 'leads' || t.id === 'dashboard' ? `goTab('${t.id}')` : `setView('${t.id}')`}">
+          ${t.icon}
+          ${t.badge ? `<div class="nav-badge">${t.badge > 9 ? '9+' : t.badge}</div>` : ''}
+          <span>${t.label}</span>
+        </button>
+      `).join('')}
+    </nav>
+  `;
+}
+
+function goTab(t) {
+  ST.view = t;
+  ST.filter = t === 'leads' ? 'all' : ST.filter;
+  applyFilter();
+  render();
+}
+
+/* ── View Router ── */
+function renderView() {
+  switch(ST.view) {
+    case 'dashboard': return renderDashboard();
+    case 'leads':     return renderLeads();
+    case 'detail':    return renderDetail();
+    case 'settings':  return renderSettings();
+    case 'add':       return renderAdd();
+    default:          return renderDashboard();
+  }
+}
+
+/* ── Loading ── */
+function renderLoading() {
+  return `<div class="loading-wrap"><div class="spinner"></div></div>`;
+}
+
+/* ── DASHBOARD ── */
+function renderDashboard() {
+  const co       = COMPANIES[ST.company];
+  const newLeads = ST.leads.filter(l => l.status === 'new');
+  const now      = new Date();
+  const weekAgo  = new Date(now - 7  * 86400000);
+  const monStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thisWeek = ST.leads.filter(l => new Date(l.created_at) > weekAgo);
+  const thisMon  = ST.leads.filter(l => new Date(l.created_at) > monStart);
+
+  const recent = newLeads.slice(0, 4);
+
+  return `
+    ${newLeads.length > 0 ? `
+      <div class="new-leads-banner" onclick="ST.view='leads';ST.filter='new';applyFilter();render()">
+        <div>
+          <div class="banner-count">${newLeads.length}</div>
+          <div class="banner-label">NEW LEAD${newLeads.length !== 1 ? 'S' : ''}</div>
+          <div class="banner-sub">Tap to view → respond</div>
+        </div>
+        <div class="banner-arrow">→</div>
+      </div>
+    ` : `
+      <div class="all-good">
+        <div class="all-good-title">All caught up</div>
+        <div class="all-good-sub">No new leads waiting</div>
+      </div>
+    `}
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-num ${newLeads.length > 0 ? 'red' : ''}">${newLeads.length}</div>
+        <div class="stat-lbl">New</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">${thisWeek.length}</div>
+        <div class="stat-lbl">This Week</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">${thisMon.length}</div>
+        <div class="stat-lbl">This Month</div>
+      </div>
+    </div>
+
+    ${recent.length > 0 ? `
+      <div class="sec-head">
+        <div class="sec-title">Needs Response</div>
+        <button class="sec-link" onclick="ST.view='leads';ST.filter='new';applyFilter();render()">See All →</button>
+      </div>
+      ${recent.map(renderLeadCard).join('')}
+    ` : ''}
+
+    <div style="margin-top:${recent.length > 0 ? 16 : 0}px;">
+      <button class="btn btn-ghost" onclick="setView('add')">
+        + Add Lead Manually
+      </button>
+    </div>
+  `;
+}
+
+/* ── LEADS LIST ── */
+function renderLeads() {
+  const all        = ST.leads.length;
+  const newC       = ST.leads.filter(l => l.status === 'new').length;
+  const contactedC = ST.leads.filter(l => l.status === 'contacted').length;
+  const closedC    = ST.leads.filter(l => l.status === 'closed').length;
+
+  const filters = [
+    { id: 'all',       label: `All (${all})`             },
+    { id: 'new',       label: `New (${newC})`            },
+    { id: 'contacted', label: `Contacted (${contactedC})` },
+    { id: 'closed',    label: `Closed (${closedC})`     },
+  ];
+
+  return `
+    <div class="filter-row">
+      ${filters.map(f => `
+        <button class="fpill ${ST.filter === f.id ? 'active' : ''}" onclick="setFilter('${f.id}')">${f.label}</button>
+      `).join('')}
+    </div>
+
+    ${ST.filtered.length === 0
+      ? `<div class="empty">
+           <div class="empty-title">No ${ST.filter === 'all' ? '' : ST.filter + ' '}leads</div>
+           <div class="empty-sub">They'll appear here when they come in</div>
+         </div>`
+      : ST.filtered.map(renderLeadCard).join('')
+    }
+
+    <button class="btn btn-ghost" style="margin-top:12px;" onclick="setView('add')">
+      + Add Lead Manually
+    </button>
+  `;
+}
+
+function renderLeadCard(lead) {
+  const service = lead.form_data?.service
+    || lead.form_data?.['Service Type']
+    || lead.form_data?.['Service']
+    || lead.service
+    || '';
+
+  return `
+    <div class="lead-card" onclick="openLead('${lead.id}')">
+      <div class="lc-top">
+        <div class="lc-name">${esc(lead.name || 'Unknown')}</div>
+        <div class="pill pill-${lead.status || 'new'}">${(lead.status || 'NEW').toUpperCase()}</div>
+      </div>
+      ${lead.phone ? `<div class="lc-phone">${esc(lead.phone)}</div>` : ''}
+      <div class="lc-bottom">
+        ${service ? `<span>${esc(service)}</span><div class="lc-dot"></div>` : ''}
+        <span>${timeAgo(lead.created_at)}</span>
+        ${lead.response_method ? `<div class="lc-dot"></div><span>via ${cap(lead.response_method)}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+/* ── LEAD DETAIL ── */
+function renderDetail() {
+  const lead = ST.current;
+  if (!lead) return `<button class="back-btn" onclick="setView('leads')">← Back</button><div class="empty"><div class="empty-title">Lead not found</div></div>`;
+
+  const fd       = lead.form_data || {};
+  const skip     = ['_replyto','_subject','_next','_gotcha','_format','name','email','phone','Name','Email','Phone'];
+  const entries  = Object.entries(fd).filter(([k]) => !skip.includes(k));
+
+  const sbClass  = { new: 'dsb-new', contacted: 'dsb-contacted', closed: 'dsb-closed' };
+  const sbLabels = { new: 'New Lead', contacted: 'Contacted', closed: 'Closed' };
+  const sbc = sbClass[lead.status]  || 'dsb-new';
+  const sbl = sbLabels[lead.status] || 'New Lead';
+
+  return `
+    <button class="back-btn" onclick="setView('leads')">← Back to Leads</button>
+
+    <div class="detail-name">${esc(lead.name || 'Unknown')}</div>
+    <div class="detail-status-bar ${sbc}">
+      ${sbl}${lead.response_method ? ` &nbsp;·&nbsp; via ${cap(lead.response_method)}` : ''}
+    </div>
+
+    <!-- Contact Info -->
+    <div class="detail-block">
+      <div class="db-head">Contact</div>
+      ${lead.name  ? dbRow('Name',     esc(lead.name)) : ''}
+      ${lead.email ? dbRow('Email',    `<a class="db-link" href="mailto:${lead.email}">${esc(lead.email)}</a>`) : ''}
+      ${lead.phone ? dbRow('Phone',    `<a class="db-link" href="tel:${lead.phone}">${esc(lead.phone)}</a>`) : ''}
+      ${dbRow('Received', fmtDate(lead.created_at))}
+    </div>
+
+    <!-- Form Answers -->
+    ${entries.length > 0 ? `
+      <div class="detail-block">
+        <div class="db-head">Form Answers</div>
+        ${entries.map(([k, v]) => dbRow(k.replace(/_/g,' '), esc(String(v || '—')))).join('')}
+      </div>
+    ` : ''}
+
+    <!-- Status Actions -->
+    <div class="detail-block">
+      <div class="db-head">Status</div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+        ${lead.status !== 'contacted' ? `
+          <button class="btn btn-primary" onclick="openResponseSheet('${lead.id}')">
+            Mark as Contacted
+          </button>
+        ` : ''}
+        ${lead.status !== 'closed' ? `
+          <button class="btn btn-success" onclick="updateStatus('${lead.id}','closed','')">
+            Close Lead
+          </button>
+        ` : ''}
+        ${lead.status !== 'new' ? `
+          <button class="btn btn-ghost" onclick="updateStatus('${lead.id}','new','')">
+            Reopen
+          </button>
+        ` : ''}
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="detail-block">
+      <div class="db-head">Notes</div>
+      <div style="padding:16px; display:flex; flex-direction:column; gap:10px;">
+        <textarea id="notes-ta" rows="4" placeholder="Add notes about this lead...">${esc(lead.notes || '')}</textarea>
+        <button class="btn btn-ghost" onclick="saveNotes('${lead.id}', document.getElementById('notes-ta').value)">
+          Save Notes
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function dbRow(label, value) {
+  return `
+    <div class="db-row">
+      <div class="db-label">${label}</div>
+      <div class="db-value">${value}</div>
+    </div>
+  `;
+}
+
+/* ── ADD LEAD ── */
+function renderAdd() {
+  const co = COMPANIES[ST.company];
+  return `
+    <button class="back-btn" onclick="setView('leads')">← Back</button>
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;letter-spacing:-0.3px;">Add Lead</h2>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:20px;">
+      Adding to <strong style="color:var(--co-accent)">${co.name}</strong>
+    </p>
+
+    <div class="form-group">
+      <label class="form-label">Full Name *</label>
+      <input type="text" id="a-name" placeholder="John Smith" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Phone Number</label>
+      <input type="tel" id="a-phone" placeholder="(616) 555-1234">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" id="a-email" placeholder="john@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Service Requested</label>
+      <input type="text" id="a-service" placeholder="Hardwood install, refinish, repair...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Message / Details</label>
+      <textarea id="a-msg" rows="3" placeholder="Any extra details about their project..."></textarea>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top:6px;" onclick="submitAdd()">
+      Add Lead
+    </button>
+    <button class="btn btn-ghost" onclick="setView('leads')">Cancel</button>
+  `;
+}
+
+function submitAdd() {
+  const name = document.getElementById('a-name')?.value?.trim();
+  if (!name) { toast('⚠️ Please enter a name'); return; }
+  const phone   = document.getElementById('a-phone')?.value?.trim();
+  const email   = document.getElementById('a-email')?.value?.trim();
+  const service = document.getElementById('a-service')?.value?.trim();
+  const msg     = document.getElementById('a-msg')?.value?.trim();
+  addLead({ name, phone, email, form_data: { service, message: msg }, notes: '' });
+}
+
+/* ── SETTINGS ── */
+function renderSettings() {
+  const existing = localStorage.getItem('fb_config') || '';
+  let prettyConfig = '';
+  try { prettyConfig = JSON.stringify(JSON.parse(existing), null, 2); } catch(e) {}
+
+  return `
+    <h2 style="font-size:22px;font-weight:700;margin-bottom:20px;letter-spacing:-0.3px;">Settings</h2>
+
+    <div class="detail-block settings-section">
+      <div class="db-head">Database</div>
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <p style="font-size:13px;color:var(--text2);line-height:1.5;">
+          Paste your Firebase config object here. Found in the Firebase console under
+          <strong>Project Settings → Your Apps → SDK setup</strong>.
+        </p>
+        <div>
+          <label class="form-label">Firebase Config</label>
+          <textarea id="s-config" rows="9" placeholder='{\n  "apiKey": "...",\n  "projectId": "..."\n}' autocorrect="off" autocapitalize="off" spellcheck="false">${esc(prettyConfig)}</textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">
+          Save & Reconnect
+        </button>
+      </div>
+    </div>
+
+    <div class="detail-block settings-section">
+      <div class="db-head">Connection</div>
+      <div style="padding:14px 16px;">
+        ${ST.connected
+          ? `<div style="color:var(--green);font-weight:600;font-size:15px;">Live — connected</div>`
+          : `<div style="color:var(--text2);font-weight:600;font-size:15px;">Not connected</div>`
+        }
+      </div>
+    </div>
+
+    <div class="detail-block settings-section">
+      <div class="db-head">Companies</div>
+      <div style="padding:14px 16px;">
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-main">Legacy Hardwoods</div>
+            <div class="settings-row-sub">legacyhardwoods.com · Holland, MI</div>
+          </div>
+          <div style="color:var(--text2);font-size:13px;">Full service</div>
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-row-main">GR Hardwood Refinishing</div>
+            <div class="settings-row-sub">grandrapidshardwoodfloorrefinishing.com · Grand Rapids, MI</div>
+          </div>
+          <div style="color:var(--text2);font-size:13px;">Refinishing only</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-danger" onclick="if(confirm('Clear all settings and start over?')){resetAll()}">
+      Clear All Settings
+    </button>
+  `;
+}
+
+function saveSettings() {
+  const raw = document.getElementById('s-config')?.value?.trim();
+  if (!raw) { toast('⚠️ Paste your Firebase config'); return; }
+  try {
+    const config = parseFirebaseConfig(raw);
+    if (!config.projectId) throw new Error('Missing projectId — make sure you pasted the full config.');
+    localStorage.setItem('fb_config', JSON.stringify(config));
+    toast('✅ Saved! Reloading to reconnect...');
+    setTimeout(() => location.reload(), 1200);
+  } catch(e) {
+    toast('⚠️ ' + (e.message || 'Invalid config'));
+  }
+}
+
+function resetAll() {
+  if (_snapshotUnsub) _snapshotUnsub();
+  localStorage.clear();
+  DB = null;
+  ST.configured = false;
+  ST.leads      = [];
+  ST.filtered   = [];
+  render();
+}
+
+/* ── SETUP SCREEN ── */
+function renderSetup() {
+  return `
+    <div class="setup-wrap">
+      <div class="setup-logo">Flooring CRM</div>
+
+      <div class="setup-card">
+        <div class="setup-h2">Connect your database</div>
+        <div class="setup-p">
+          Paste your Firebase config object below. The setup guide shows exactly where to find it.
+          You only need to do this once.
+        </div>
+
+        <label class="setup-lbl">Firebase Config</label>
+        <textarea id="su-config" rows="9"
+          placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "your-app.firebaseapp.com",&#10;  "projectId": "your-app",&#10;  "storageBucket": "your-app.appspot.com",&#10;  "messagingSenderId": "123...",&#10;  "appId": "1:123..."&#10;}'
+          autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+
+        <button class="btn btn-primary" style="margin-top:20px;" onclick="doSetup()">
+          Connect
+        </button>
+
+        <p style="color:var(--text2);font-size:12px;text-align:center;margin-top:14px;font-weight:400;">
+          Refer to the setup guide if you need help.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+/* Parse Firebase config — accepts raw JSON or JS object literal */
+function parseFirebaseConfig(text) {
+  let t = text.trim();
+  // Strip 'const firebaseConfig = ' prefix if they pasted the whole line
+  t = t.replace(/^(const|var|let)\s+\w+\s*=\s*/, '');
+  t = t.replace(/;?\s*$/, '');
+  try {
+    return JSON.parse(t);
+  } catch(e) {
+    // Fall back to evaluating as JS object literal (keys without quotes)
+    return Function('"use strict"; return (' + t + ')')();
+  }
+}
+
+function doSetup() {
+  const raw = document.getElementById('su-config')?.value?.trim();
+  if (!raw) { alert('Please paste your Firebase config.'); return; }
+  try {
+    const config = parseFirebaseConfig(raw);
+    if (!config.projectId) throw new Error('Missing projectId — make sure you pasted the full config object.');
+    localStorage.setItem('fb_config', JSON.stringify(config));
+    ST.configured = true;
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    DB = firebase.firestore();
+    subscribeToLeads();
+    ST.view = 'dashboard';
+    render();
+  } catch(e) {
+    alert('Could not read that config.\n\nMake sure you pasted the entire { } object from Firebase.\n\nError: ' + e.message);
+  }
+}
+
+/* ================================================================
+   SVG ICONS
+================================================================ */
+function svgHome() {
+  return `<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+}
+function svgLeads() {
+  return `<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+}
+function svgSettings() {
+  return `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+}
+
+/* ── HTML escape ── */
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+/* ================================================================
+   BOOT
+================================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  if (initDB()) {
+    render();
+    subscribeToLeads();   // handles initial load + real-time in one call
+  } else {
+    render();
+  }
+
+  // Register PWA service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+});
+</script>
+</body>
+</html>

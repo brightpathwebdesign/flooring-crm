@@ -1,0 +1,27 @@
+{
+  "name": "Flooring CRM — Legacy & GRHFR",
+  "short_name": "Floor CRM",
+  "description": "Lead management for Legacy Hardwoods and GR Hardwood Refinishing",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1C0F08",
+  "theme_color": "#1C0F08",
+  "orientation": "portrait-primary",
+  "scope": "./",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "en-US"
+}
