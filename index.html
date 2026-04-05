@@ -936,19 +936,21 @@ function subscribeToLeads() {
   _snapshotUnsub = DB
     .collection('leads')
     .where('company', '==', ST.company)
-    .orderBy('created_at', 'desc')
+    // Note: sorting done client-side to avoid Firestore composite index requirement
     .onSnapshot(
       (snapshot) => {
         if (!_snapshotReady) {
-          // ── First fire = initial data load ──
-          ST.leads = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Initial load — sort by created_at descending after fetch
+          ST.leads = snapshot.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           _snapshotReady = true;
           ST.connected  = true;
           ST.loading    = false;
           applyFilter();
           render();
         } else {
-          // ── Subsequent fires = real-time changes ──
+          // Real-time changes
           snapshot.docChanges().forEach((change) => {
             const lead = { id: change.doc.id, ...change.doc.data() };
             if (change.type === 'added') {
@@ -963,6 +965,8 @@ function subscribeToLeads() {
               ST.leads = ST.leads.filter(l => l.id !== change.doc.id);
             }
           });
+          // Re-sort after any change
+          ST.leads.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
           applyFilter();
           render();
         }
@@ -1617,8 +1621,7 @@ function renderSetup() {
       <div class="setup-card">
         <div class="setup-h2">Connect your database</div>
         <div class="setup-p">
-          Paste your Firebase config object below. The setup guide shows exactly where to find it.
-          You only need to do this once.
+          Paste your Firebase config below — it's okay to paste the entire code block from Firebase. We'll extract just the config automatically.
         </div>
 
         <label class="setup-lbl">Firebase Config</label>
@@ -1638,17 +1641,34 @@ function renderSetup() {
   `;
 }
 
-/* Parse Firebase config — accepts raw JSON or JS object literal */
+/* Parse Firebase config — handles any of these paste formats:
+   • Just the { } object
+   • const firebaseConfig = { ... };
+   • The full Firebase snippet including initializeApp lines  */
 function parseFirebaseConfig(text) {
-  let t = text.trim();
-  // Strip 'const firebaseConfig = ' prefix if they pasted the whole line
-  t = t.replace(/^(const|var|let)\s+\w+\s*=\s*/, '');
-  t = t.replace(/;?\s*$/, '');
+  // Find the first { and its matching closing }
+  // This extracts just the config object no matter what else was pasted
+  const start = text.indexOf('{');
+  if (start === -1) throw new Error('No config object found. Make sure you paste the { } block from Firebase.');
+
+  let depth = 0, end = -1;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+
+  if (end === -1) throw new Error('Config is missing its closing } — try copying it again.');
+
+  const objText = text.slice(start, end + 1);
+
   try {
-    return JSON.parse(t);
+    return JSON.parse(objText);
   } catch(e) {
-    // Fall back to evaluating as JS object literal (keys without quotes)
-    return Function('"use strict"; return (' + t + ')')();
+    // Keys aren't quoted in the Firebase snippet — evaluate as JS object literal
+    return Function('"use strict"; return (' + objText + ')')();
   }
 }
 
